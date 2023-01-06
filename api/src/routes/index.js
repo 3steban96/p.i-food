@@ -15,61 +15,73 @@ const router = Router();
 
 
 
-router.get("/getAll", async (req,res) =>{
-    const  apiDataFood = await axios.get(`https://api.spoonacular.com/recipes/complexSearch/?apiKey=${APIKEY}&addRecipeInformation=true&number=100`);
-    //https://api.spoonacular.com/recipes/complexSearch/?apiKey=fe8bd4d6626f46828d02af6feccc38db&addRecipeInformation=true&number=100
+// router.get("/getAll", async (req,res) =>{
+//     const  apiDataFood = await axios.get(`https://api.spoonacular.com/recipes/complexSearch/?apiKey=${APIKEY}&addRecipeInformation=true&number=100`);
+//     //https://api.spoonacular.com/recipes/complexSearch/?apiKey=fe8bd4d6626f46828d02af6feccc38db&addRecipeInformation=true&number=100
     
-    const apiMapData = apiDataFood.data.results.map(rec =>{
-        const obj = {
-            id:rec.id,
-            name: rec.title,
-            summaryDish: rec.summary,
-            levelHealthyFood: rec.healthScore,
-            stepByStep: rec.analyzedInstructions
-            .map(r => r.steps.map(s=>s.step))
-            .flat(1)
-            .join(""),
-            image: rec.image,
+//     const apiMapData = apiDataFood.data.results.map(rec =>{
+//         const obj = {
+//             id:rec.id,
+//             name: rec.title,
+//             summaryDish: rec.summary,
+//             levelHealthyFood: rec.healthScore,
+//             stepByStep: rec.analyzedInstructions
+//             .map(r => r.steps.map(s=>s.step))
+//             .flat(1)
+//             .join(""),
+//             image: rec.image,
             
-        };
-        return obj;
-    });    
-    const db = await Recipe.findAll({include: [{model: TypeOfDiet}]});
-    const suma = [...apiMapData, ...db];
-    res.json(suma);
-});
+//         };
+//         return obj;
+//     });    
+//     const db = await Recipe.findAll({include: [{model: TypeOfDiet}]});
+//     const suma = [...apiMapData, ...db];
+//     res.json(suma);
+// });
 // // // RUTA: GET /recipes?name="..."
 
-router.get('/recipes', async (req, res) => {
-  try {
-    const apiDataFoods = await axios.get(`https://api.spoonacular.com/recipes/complexSearch/?apiKey=${APIKEY}&addRecipeInformation=true&number=100`);
-    const name = req.query.name;
-    const recipes = await apiDataFoods.data.findAll({
-      where: {
-        name: { [Sequelize.Op.like]: `%${name}%` },
+
+  router.get('/recipes', async (req, res) => {
+    try {// obtenemos el nombre de la receta desde el query parameter
+      const name = req.query.name;
+      // realizamos la solicitud a la API utilizando Axios y enviando el parámetro de búsqueda como un objeto de consultas
+      const response = await axios.get(`https://api.spoonacular.com/recipes/complexSearch`, {
+        params: {
+          apiKey: APIKEY,
+          addRecipeInformation: true,
+          number: 100,
+          query: name,
+        },
+      });
+      // obtenemos los resultados de la búsqueda de la respuesta de la API
+      const recipes = response.data.results;
+      // si no encontramos ninguna receta, enviamos un mensaje de error
+      if (!recipes.length) {
+        return res.status(404).json({ error: 'No se han encontrado recetas con ese nombre' });
       }
-    });
-    if (!recipes.length) {
-      return res.status(404).json({ error: 'No se han encontrado recetas con ese nombre' });
+      // si encontramos al menos una receta, las enviamos como respuesta
+      return res.json(recipes);
+      
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Ha ocurrido un error al obtener las recetas' });
     }
-    return res.json(recipes);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Ha ocurrido un error al obtener las recetas' });
-  }
-});
+  });
+  
 // // // RUTA POST /recipes:
-router.post("/create",async(req,res)=>{
+// router.post("/create",async(req,res)=>{
     
-    const { name, summaryDish, levelHealthyFood, stepByStep, image, create} = req.body;
-    try{
-        const formNewRecipe ={name, summaryDish, levelHealthyFood, stepByStep, image, create} 
-        const newRecipe = await Recipe.create(formNewRecipe)
-        console.log("Entidad",newRecipe.__proto__);
-        console.log("Modelo",newRecipe.__proto__);
-        res.send(newRecipe);
-    }catch{
-        res.status(400).json({msg:"Faltan Datos"});
-    }
-});
+//     const { name, summaryDish, levelHealthyFood, stepByStep, image, create} = req.body;
+//     try{
+//         const formNewRecipe ={name, summaryDish, levelHealthyFood, stepByStep, image, create} 
+//         const newRecipe = await Recipe.create(formNewRecipe)
+
+
+
+//         res.send(newRecipe);
+
+//     }catch{
+//         res.status(400).json({msg:"Faltan Datos"});
+//     }
+// });
 module.exports = router;
