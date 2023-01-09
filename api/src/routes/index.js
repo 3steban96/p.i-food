@@ -1,4 +1,4 @@
-const { Router } = require('express');
+const { Router, response } = require('express');
 const axios = require("axios");
 const e = require('express');
 require('dotenv').config();
@@ -38,9 +38,9 @@ router.get("/getAll", async (req,res) =>{
     const suma = [...apiMapData, ...db];
     res.json(suma);
 });
+
+
 // // // RUTA: GET /recipes?name="..."
-
-
   router.get('/recipes', async (req, res) => {
     try {// obtenemos el nombre de la receta desde el query parameter
       const name = req.query.name;
@@ -69,84 +69,112 @@ router.get("/getAll", async (req,res) =>{
   });
   
 // // // RUTA POST /recipes:
-router.post("/create",async(req,res)=>{
-    
-    const { name, summaryDish, levelHealthyFood, stepByStep, image, create} = req.body;
-    try{
-        const formNewRecipe ={name, summaryDish, levelHealthyFood, stepByStep, image, create} 
-        const newRecipe = await Recipe.create(formNewRecipe)
+router.post("/create", async (req, res) => {
+  // Obtenemos los datos del cuerpo de la solicitud
+  const { name, summaryDish, levelHealthyFood, stepByStep, image, create, typeOfDiets } = req.body;
+  try {
+    // Creamos una nueva receta con los datos recibidos
+    const formNewRecipe = { name, summaryDish, levelHealthyFood, stepByStep, image, create };
+    const newRecipe = await Recipe.create(formNewRecipe);
 
+    // Asociamos la receta con los tipos de dieta especificados
+    newRecipe.addTypeOfDiets(typeOfDiets);
 
+    // Buscamos la receta recién creada en la base de datos, incluyendo la información de los tipos de dieta asociados
+    const recipe = await Recipe.findByPk(newRecipe.id, {
+      include: [{ model: TypeOfDiet }],
+    });
 
-        res.send(newRecipe);
-
-    }catch{
-        res.status(400).json({msg:"Faltan Datos"});
-    }
+    // Enviamos la receta como respuesta
+    res.send(recipe);
+  } catch {
+    // Si ocurre algún error, enviamos un mensaje de error
+    res.status(400).json({ msg: "Faltan datos" });
+  }
 });
 
+       
+        
+
+
 // Ruta Get /recipes/:id
-
 router.get('/recipes/:id', async (req, res) => {
+  // obtenemos el ID de la receta desde el parámetro de la ruta
+  const id = req.params.id;
+
   try {
-    
-    const  apiDataFood = await axios.get(`https://api.spoonacular.com/recipes/complexSearch/?apiKey=${APIKEY}&addRecipeInformation=true&number=100`);
-//     //https://api.spoonacular.com/recipes/complexSearch/?apiKey=fe8bd4d6626f46828d02af6feccc38db&addRecipeInformation=true&number=100
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    //DB
-    // obtenemos el id de la receta desde la ruta
-    const id = req.params.id;
     // buscamos la receta en la base de datos
     const recipe = await Recipe.findByPk(id);
-    // si no encontramos la receta, enviamos un mensaje de error
-    if (!recipe) {
-      return res.status(404).json({ error: 'No se ha encontrado la receta solicitada' });
+    // si encontramos la receta en la base de datos, la enviamos como respuesta
+    if (recipe) {
+      // const diets = await recipe.getDiets();
+      return res.json({
+        recipe: recipe,
+        // diets: diets
+      });
     }
 
-    // obtenemos los tipos de dieta asociados a la receta
-    // const diets = await recipe.getDiets();
+    // si no encontramos la receta en la base de datos, buscamos en la API
+    //const apiDataFoods = await axios.get(`https://api.spoonacular.com/recipes/${id}/information?apiKey=${APIKEY}&includeNutrition=false`);
+    // si encontramos la receta en la API, la enviamos como respuesta
+    if (!recipe) {
+      const apiResponse = await axios.get(`https://api.spoonacular.com/recipes/${id}/information?apiKey=${APIKEY}`);
+      // si no encontramos la receta en la API, enviamos un mensaje de error
+      if (!apiResponse.data) {
+        return res.status(404).json({ error: 'No se ha encontrado la receta' });
+      }
 
-    // Enviamos la receta y los tipos de dieta como respuesta
-    return res.json({
-      recipe: recipe,
-      // diets: diets
-    });
-    
-    
+      // si encontramos la receta en la API, la enviamos como respuesta
+      return res.json({
+        id: apiResponse.data.id,
+        name: apiResponse.data.title,
+        summary: apiResponse.data.summary,
+        healthScore: apiResponse.data.healthScore,
+        analyzedInstructions: apiResponse.data.analyzedInstructions,
+        image: apiResponse.data.image,
+        diets: apiResponse.data.diets.map(diet =>diet)
+      });
+    }
+
+
+    // si no encontramos la receta ni en la base de datos ni en la API, enviamos un mensaje de error
+    return res.status(404).json({ error: 'No se ha encontrado la receta solicitada' });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Ha ocurrido un error al obtener la receta' });
   }
 });
 
+
+router.get('/diets', async (req, res) => {
+  try {
+    // Consultamos todos los tipos de dieta en la base de datos
+    const diets = await TypeOfDiet.findAll();
+    // Si no encontramos ningún tipo de dieta, precargamos la base de datos con los tipos de dieta predefinidos
+    if (!diets.length) {
+      const defaultDiets = [
+        { name: 'Whole30' },
+        { name: 'Low FODMAP' },
+        { name: 'Primal' },
+        { name: 'Paleo' },
+        { name: 'Pescetarian' },
+        { name: 'Vegan' },
+        { name: 'Ovo-Vegetarian' },
+        { name: 'Lacto-Vegetarian' },
+        { name: 'Vegetarian' },
+        { name: 'Ketogenic' },
+        { name: 'Gluten Free' },
+      ];
+      await TypeOfDiet.bulkCreate(defaultDiets);
+      res.send(defaultDiets);
+    } else {
+      // Si encontramos tipos de dieta en la base de datos, los enviamos como respuesta
+      res.send(diets);
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Ha ocurrido un error al obtener los tipos de dieta' });
+  }
+});
 
 module.exports = router;
