@@ -1,0 +1,23 @@
+.Cardp{
+    
+    background: linear-gradient(to bottom, #ede4d5 20%, #F8E71C 10%, #fcfbfa 20%, #c1b2a6 80%, #fff6e8 100%);
+    padding: 10px;
+    width: 350px;
+    text-align: center;
+    color: rgb(173, 105, 105);
+    
+    backdrop-filter: blur(10px);
+    border-radius: 60px 20px 5px 90px;
+    
+}
+.image{
+    width: 95%;
+    border-radius: 60px 20px 5px;
+    position: relative;
+    
+}
+.textC{
+    float: right;
+    margin-left: 20px;
+    padding-left: 20px;
+ }

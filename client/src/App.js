@@ -1,10 +1,18 @@
 import './App.css';
+import Home from './components/Vistas/Home';
+// import landingHome from './components/Vistas/landingHome';
 
 function App() {
   return (
-    <div className="App">
-      <h1>Henry Food</h1>
-    </div>
+   
+      <div>
+        <Home/>
+        {/* <landingHome/> */}
+      </div>
+      
+        
+      
+  
   );
 }
 

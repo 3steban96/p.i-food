@@ -1,0 +1,19 @@
+.smoke {
+    opacity: 0;
+    transition: opacity 2s;
+    animation: 2s linear infinite;
+}
+.smoke:hover{
+    opacity: 1;
+}
+@keyframes smoke {
+    0%{
+        opacity: 0;
+    }
+    50%{
+        opacity: 1;
+    }
+    100%{
+        opacity: 0;
+    }
+}
